@@ -1,19 +1,15 @@
 import os
 import torch
-from datasets import load_dataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
     TrainingArguments,
-    pipeline,
-    logging,
 )
 from peft import LoraConfig
 from trl import SFTTrainer
 import huggingface_hub
 
-from data.dataset import Interview_Dataset
 
 class InterviewModels:
     def __init__(self, base_model="beomi/Llama-3-Open-Ko-8B"):
