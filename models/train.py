@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 
 class InterviewModels:
-    def __init__(self, base_model="beomi/Llama-3-Open-Ko-8B"):
+    def __init__(self, base_model="beomi/KoAlpaca-Polyglot-5.8B"):
         self.base_model = base_model
         self.model = self._load_model()
         self.tokenizer = self._load_tokenizer()
@@ -57,7 +57,7 @@ class InterviewModels:
             load_in_4bit=True,
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch_dtype,
-            bnb_4bit_use_double_quan=True,
+            bnb_4bit_use_double_quan=False,
         )
 
     @staticmethod
@@ -96,18 +96,12 @@ class InterviewModels:
         """
         데이터셋 전처리: 모든 키를 결합하여 텍스트 생성
         """
-        def combine_texts(example):
-            return {
-                "text": (
-                    f"경험: {example['experience']}, "
-                    f"나이 범위: {example['ageRange']}, "
-                    f"직무: {example['occupation']}, "
-                    f"질문: {example['question']}, "
-                    f"답변: {example['answer']}"
-                )
-            }
 
-        # 데이터셋에 "text" 필드 추가
+        def combine_texts(example):
+            keys = ["experience", "ageRange", "occupation", "question", "answer"]
+            combined_text = ", ".join([f"{key}: {example[key]}" for key in keys if key in example])
+            return {"text": combined_text}
+
         return dataset.map(combine_texts)
 
     def train_model(self, dataset):
