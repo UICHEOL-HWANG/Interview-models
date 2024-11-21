@@ -1,42 +1,42 @@
 from datasets import load_dataset
 
 class DatasetManager:
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
     @staticmethod
-    def load_dataset(repository_id: str, split="train"):
+    def load_dataset(repository_id: str, split="train", sample_fraction=None):
         """
+        데이터셋 로드 및 샘플링
         :param repository_id: 데이터셋 경로
-        :param split: 분류 구분
-        :return: datasets Types[jsonl]
+        :param split: 데이터 분류 (train, validation 등)
+        :param sample_fraction: 데이터 샘플링 비율 (훈련 데이터셋에만 적용)
+        :return: datasets 객체
         """
-        print(f"데이터셋 로드 {repository_id}")
+        print(f"데이터셋 로드: {repository_id} ({split})")
         dataset = load_dataset(repository_id, split=split)
-        smaller_dataset = dataset.shuffle(seed=42).select(range(int(len(dataset) * 0.4)))
-        # 기존 데이터셋은 6만8천줄 json 데이터라 5에폭 기준 훈련 세트가 2만회를 넘기에, 40%의 훈련셋만 세팅
 
-        return smaller_dataset
+        # Train <-> Validation 구분
+        if sample_fraction:
+            dataset = dataset.shuffle(seed=42).select(range(int(len(dataset) * sample_fraction)))
+        return dataset # Train은 68,000 rows -> 40%만 추출 해서 학습 예정
 
-    @staticmethod
-    def load_validation_dataset(repository_id: str, split="train"): # split 자체를 validation으로 못함..
+    def preprocess_dataset(self, dataset):
         """
-
-        :param repository_id: 저장소 경로
-        :param split: 분류 구분
-        :return: 검증 데이터 세트
+        데이터 전처리: 직업, 나이, 경력, 질문, 답변을 포함한 입력 구성
         """
-        print(f"검증 데이터셋 로드 {repository_id}")
-        return load_dataset(repository_id, split=split)
-
-    @staticmethod
-    def preprocess_dataset(dataset):
-        """
-
-        :param dataset: load_dataset에서 받아온 데이터를 모델 입력 데이터로 변환
-        :return: json
-        """
+        special_tokens = {
+            "inst_token": "<INST>",
+            "inst_end_token": "<INST_END>",
+        }
 
         def combine_texts(example):
-            keys = ["experience", "ageRange", "occupation", "question", "answer"]
-            combined_text = ", ".join([f"{key}: {example[key]}" for key in keys if key in example])
+            combined_text = (
+                f"{special_tokens['inst_token']} "
+                f"직업: {example['occupation']}, 나이 범위: {example['ageRange']}, 경력: {example['experience']} "
+                f"질문: {example['question']} 답변: {example['answer']} "
+                f"{special_tokens['inst_end_token']} {self.tokenizer.eos_token}"
+            )
             return {"text": combined_text}
-        return dataset.map(combine_texts)
 
+        return dataset.map(combine_texts)

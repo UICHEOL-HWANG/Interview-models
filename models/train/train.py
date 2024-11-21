@@ -9,16 +9,20 @@ def main(args):
     model_manager = ModelManager(base_model=args.base_model)
     model, tokenizer = model_manager._load_model_and_tokenizer()
 
-    # DatasetManager 초기화 및 데이터셋 로드
-    dataset_manager = DatasetManager()
+    # DatasetManager 초기화
+    dataset_manager = DatasetManager(tokenizer=tokenizer)
 
-    # 훈련 데이터셋 로드
-    train_dataset = dataset_manager.load_dataset(args.dataset_repo, split="train")
+    # 훈련 데이터셋 로드 및 전처리
+    train_dataset = dataset_manager.load_dataset(args.dataset_repo, split="train", sample_fraction=0.4)
     train_dataset = dataset_manager.preprocess_dataset(train_dataset)
 
-    # 검증 데이터셋 로드
+    # 검증 데이터셋 로드 및 전처리 (100% 사용)
     val_dataset = dataset_manager.load_dataset(args.val_dataset_repo, split="train")
     val_dataset = dataset_manager.preprocess_dataset(val_dataset)
+
+    # WandB 실행 이름 설정
+    if not args.run_name:
+        args.run_name = f"KoAlpaca-5.8B_epochs-{args.num_train_epochs}_lr-{args.learning_rate}"
 
     # TrainingManager 초기화 및 훈련 파라미터 구성
     training_manager = TrainingManager(project_name="interview-model-tracking", run_name=args.run_name)
@@ -26,7 +30,7 @@ def main(args):
     training_args = training_manager.configure_training(
         output_dir=args.output_dir,
         num_train_epochs=args.num_train_epochs,
-        learning_rate=args.learning_rate
+        learning_rate=args.learning_rate,
     )
 
     # 모델 학습
