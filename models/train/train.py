@@ -21,7 +21,7 @@ def main(args):
     val_dataset = dataset_manager.preprocess_dataset(val_dataset)
 
     # TrainingManager 초기화 및 훈련 파라미터 구성
-    training_manager = TrainingManager(project_name="interview-model", run_name=args.run_name)
+    training_manager = TrainingManager(project_name="interview-model-tracking", run_name=args.run_name)
     peft_config = training_manager.configure_peft()
     training_args = training_manager.configure_training(
         output_dir=args.output_dir,
