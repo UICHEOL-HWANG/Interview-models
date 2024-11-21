@@ -63,6 +63,7 @@ class TrainingManager:
         sft_config = SFTConfig(
             max_seq_length=512,
             dataset_text_field="text",
+            output_dir=training_args.output_dir,
         )
 
         trainer = SFTTrainer(
