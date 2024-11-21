@@ -1,8 +1,8 @@
 import os
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers.utils.bitsandbytes import BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from dotenv import load_dotenv
 from huggingface_hub import login
+import torch
 
 class ModelManager:
     def __init__(self, base_model="beomi/KoAlpaca-Polyglot-5.8B"):
