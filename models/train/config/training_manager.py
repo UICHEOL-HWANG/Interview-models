@@ -63,8 +63,6 @@ class TrainingManager:
         sft_config = SFTConfig(
             max_seq_length=512,
             dataset_text_field="text",
-            padding=True,  # 텍스트 패딩
-            truncation=True,  # 텍스트 자르기
         )
 
         trainer = SFTTrainer(
