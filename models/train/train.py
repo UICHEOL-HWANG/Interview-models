@@ -7,7 +7,7 @@ from config.dataset_manager import DatasetManager
 def main(args):
     # ModelManager 초기화 및 모델, 토크나이저 로드
     model_manager = ModelManager(base_model=args.base_model)
-    model, tokenizer = model_manager._load_model_get_tokenizer()
+    model, tokenizer = model_manager._load_model_and_tokenizer()
 
 
     # DatasetManager 초기화 및 데이터셋 로드

@@ -72,9 +72,3 @@ class ModelManager:
             bnb_4bit_compute_dtype=self.torch_dtype,
             bnb_4bit_use_double_quant=False,
         )
-
-
-if __name__ == "__main__":
-    model_manager = ModelManager()
-    model_manager._login_huggingface()
-    model, tokenizer = model_manager._load_model_and_tokenizer()
