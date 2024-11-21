@@ -1,6 +1,7 @@
 from transformers import TrainingArguments
 from peft import LoraConfig
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
+import os
 
 class TrainingManager:
     @staticmethod
@@ -45,17 +46,24 @@ class TrainingManager:
         """
         모델 학습
         """
+        sft_config = SFTConfig(
+            max_seq_length=512,
+            dataset_text_field="text",
+            padding=True, # 텍스트 패딩
+            truncation=True, # 텍스트 자르기
+        )
+
         trainer = SFTTrainer(
             model=model,
             train_dataset=dataset,
             peft_config=peft_config,
-            dataset_text_field="text",
-            max_seq_length=512,
             tokenizer=tokenizer,
             args=training_args,
             packing=False,
+            sft_config=sft_config,
         )
         trainer.train()
         save_path = f"{training_args.output_dir}/UICHEOL-HWANG/KoAlpaca-InterView-5.8B"
+        os.makedirs(os.path.dirname(save_path), exist_ok=True) # 없으면 디렉터리 생성해라
         trainer.save_model(save_path)
         print(f"{save_path} 경로로 저장 완료")
