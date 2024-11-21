@@ -16,6 +16,17 @@ class DatasetManager:
         return smaller_dataset
 
     @staticmethod
+    def load_validation_dataset(repository_id: str, split="train"): # split 자체를 validation으로 못함..
+        """
+
+        :param repository_id: 저장소 경로
+        :param split: 분류 구분
+        :return: 검증 데이터 세트
+        """
+        print(f"검증 데이터셋 로드 {repository_id}")
+        return load_dataset(repository_id, split=split)
+
+    @staticmethod
     def preprocess_dataset(dataset):
         """
 
@@ -29,4 +40,3 @@ class DatasetManager:
             return {"text": combined_text}
         return dataset.map(combine_texts)
 
-    

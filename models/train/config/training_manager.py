@@ -3,7 +3,21 @@ from peft import LoraConfig
 from trl import SFTTrainer, SFTConfig
 import os
 
+# Module
+from tracking.wandb import TrackingTrain
+
+
 class TrainingManager:
+    def __init__(self, project_name, run_name=None):
+        """
+        TrainingManager 초기화
+
+        :param project_name: WandB 프로젝트 이름
+        :param run_name: 실행 이름
+        """
+        self.project_name = project_name
+        self.run_name = run_name
+
     @staticmethod
     def configure_peft():
         """
@@ -39,18 +53,18 @@ class TrainingManager:
             warmup_ratio=0.05,
             group_by_length=True,
             lr_scheduler_type="cosine",
-            report_to="tensorboard"
+            report_to="wandb"
         )
 
-    def train_model(self, model, tokenizer, dataset, peft_config, training_args):
+    def initialize_trainer(self, model, tokenizer, dataset, peft_config, training_args):
         """
-        모델 학습
+        SFTTrainer 초기화
         """
         sft_config = SFTConfig(
             max_seq_length=512,
             dataset_text_field="text",
-            padding=True, # 텍스트 패딩
-            truncation=True, # 텍스트 자르기
+            padding=True,  # 텍스트 패딩
+            truncation=True,  # 텍스트 자르기
         )
 
         trainer = SFTTrainer(
@@ -62,8 +76,45 @@ class TrainingManager:
             packing=False,
             sft_config=sft_config,
         )
-        trainer.train()
-        save_path = f"{training_args.output_dir}/UICHEOL-HWANG/KoAlpaca-InterView-5.8B"
-        os.makedirs(os.path.dirname(save_path), exist_ok=True) # 없으면 디렉터리 생성해라
-        trainer.save_model(save_path)
-        print(f"{save_path} 경로로 저장 완료")
+        return trainer
+
+    def train_model(self, model, tokenizer, train_dataset, eval_dataset, peft_config, training_args):
+        # WandB 초기화
+        TrackingTrain.initialize(
+            project_name=self.project_name,
+            run_name=self.run_name,
+            config=training_args.to_dict()
+        )
+
+        try:
+            # Trainer 초기화
+            trainer = self.initialize_trainer(
+                model=model,
+                tokenizer=tokenizer,
+                dataset=train_dataset,
+                peft_config=peft_config,
+                training_args=training_args,
+            )
+            trainer.eval_dataset = eval_dataset  # 검증 데이터셋 추가
+
+            # 학습 시작
+            print(f"훈련 시작: 저장 경로 -> {training_args.output_dir}")
+            trainer.train()
+
+            # 평가
+            if eval_dataset:
+                metrics = trainer.evaluate()
+                print(f"검증 결과: {metrics}")
+
+            # 모델 저장
+            save_path = f"{training_args.output_dir}/UICHEOL-HWANG/KoAlpaca-InterView-5.8B"
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            trainer.save_model(save_path)
+            print(f"{save_path} 경로로 저장 완료")
+
+        except Exception as e:
+            print(f"훈련 중 오류 발생: {e}")
+
+        finally:
+            # WandB 세션 종료
+            TrackingTrain.finish_wandb()
