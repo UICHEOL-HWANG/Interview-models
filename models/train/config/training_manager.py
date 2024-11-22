@@ -2,8 +2,7 @@ from transformers import TrainingArguments
 from peft import LoraConfig
 from trl import SFTTrainer
 import os
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
-from scipy.special import softmax  # Softmax 계산
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from tracking.wandb import TrackingTrain
 
@@ -46,30 +45,23 @@ class TrainingManager:
 
     @staticmethod
     def compute_metrics(pred):
+        """
+        메트릭 계산: 정확도, 정밀도, 재현율, F1 점수
+        """
         labels = pred.label_ids
         logits = pred.predictions
-        probs = softmax(logits, axis=-1)  # Logits를 확률로 변환
-        preds = np.argmax(probs, axis=-1)  # 예측된 클래스
+        preds = logits.argmax(-1)  # 예측된 클래스
 
-        # 다중 클래스의 경우 average="macro" 사용
+        # 다중 클래스의 경우 평균 방식으로 "macro" 사용
         precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="macro")
         acc = accuracy_score(labels, preds)
 
-        try:
-            # AUC 계산 (다중 클래스의 경우 multi_class="ovr")
-            auc = roc_auc_score(labels, probs, multi_class="ovr")
-        except ValueError:
-            # AUC 계산 불가능한 경우 None 반환
-            auc = None
-
         return {
             "accuracy": acc,
-            "auc": auc,
             "f1": f1,
             "precision": precision,
             "recall": recall,
         }
-
 
     def train_model(self, model, tokenizer, train_dataset, eval_dataset, peft_config, training_args):
         # WandB 초기화
