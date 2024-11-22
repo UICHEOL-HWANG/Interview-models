@@ -5,11 +5,13 @@ import os
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 from tracking.wandb import TrackingTrain
+from evaluate import load
 
 class TrainingManager:
-    def __init__(self, project_name, run_name=None):
+    def __init__(self, project_name, run_name=None, tokenizer=None):
         self.project_name = project_name
         self.run_name = run_name
+        self.tokenizer = tokenizer
 
     @staticmethod
     def configure_peft():
@@ -43,25 +45,22 @@ class TrainingManager:
             report_to="wandb"
         )
 
-    @staticmethod
-    def compute_metrics(pred):
-        """
-        메트릭 계산: 정확도, 정밀도, 재현율, F1 점수
-        """
+
+    def compute_metrics(self, pred):
+        metric = load("rouge")
         labels = pred.label_ids
         logits = pred.predictions
-        preds = logits.argmax(-1)  # 예측된 클래스
 
-        # 다중 클래스의 경우 평균 방식으로 "macro" 사용
-        precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="macro")
-        acc = accuracy_score(labels, preds)
+        decoded_preds = [self.tokenizer.decode(p, skip_special_tokens=True) for p in logits]
+        decoded_labels = [self.tokenizer.decode(l, skip_special_tokens=True) for l in labels]
 
+        result = metric.compute(predictions=decoded_preds, references=decoded_labels, use_stemmer=True)
         return {
-            "accuracy": acc,
-            "f1": f1,
-            "precision": precision,
-            "recall": recall,
+            "rouge1": result["rouge1"].mid.fmeasure,
+            "rouge2": result["rouge2"].mid.fmeasure,
+            "rougeL": result["rougeL"].mid.fmeasure,
         }
+
 
     def train_model(self, model, tokenizer, train_dataset, eval_dataset, peft_config, training_args):
         # WandB 초기화
