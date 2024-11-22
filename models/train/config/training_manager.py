@@ -2,6 +2,8 @@ from transformers import TrainingArguments
 from peft import LoraConfig
 from trl import SFTTrainer
 import os
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
+from scipy.special import softmax  # Softmax 계산
 
 from tracking.wandb import TrackingTrain
 
@@ -25,13 +27,13 @@ class TrainingManager:
         return TrainingArguments(
             output_dir=output_dir,
             num_train_epochs=num_train_epochs,
-            per_device_train_batch_size=1,
-            gradient_accumulation_steps=16,
+            per_device_train_batch_size=2,
+            gradient_accumulation_steps=32,
             optim="paged_adamw_32bit",
             save_steps=50,
             logging_steps=1,
             learning_rate=learning_rate,
-            weight_decay=0.01,
+            weight_decay=0.02,
             fp16=True,
             bf16=False,
             max_grad_norm=1.0,
@@ -41,6 +43,33 @@ class TrainingManager:
             lr_scheduler_type="cosine",
             report_to="wandb"
         )
+
+    @staticmethod
+    def compute_metrics(pred):
+        labels = pred.label_ids
+        logits = pred.predictions
+        probs = softmax(logits, axis=-1)  # Logits를 확률로 변환
+        preds = np.argmax(probs, axis=-1)  # 예측된 클래스
+
+        # 다중 클래스의 경우 average="macro" 사용
+        precision, recall, f1, _ = precision_recall_fscore_support(labels, preds, average="macro")
+        acc = accuracy_score(labels, preds)
+
+        try:
+            # AUC 계산 (다중 클래스의 경우 multi_class="ovr")
+            auc = roc_auc_score(labels, probs, multi_class="ovr")
+        except ValueError:
+            # AUC 계산 불가능한 경우 None 반환
+            auc = None
+
+        return {
+            "accuracy": acc,
+            "auc": auc,
+            "f1": f1,
+            "precision": precision,
+            "recall": recall,
+        }
+
 
     def train_model(self, model, tokenizer, train_dataset, eval_dataset, peft_config, training_args):
         # WandB 초기화
@@ -62,6 +91,8 @@ class TrainingManager:
                 packing=False,
                 max_seq_length=512,  # max_seq_length 직접 전달
                 dataset_text_field="text",  # dataset_text_field 직접 전달
+                compute_metrics=self.compute_metrics, # Validation Test
+
             )
 
             # 학습 시작
@@ -74,7 +105,7 @@ class TrainingManager:
                 print(f"검증 결과: {metrics}")
 
             # 모델 저장
-            save_path = f"{training_args.output_dir}/UICHEOL-HWANG/KoAlpaca-InterView-5.8B"
+            save_path = os.path.join(training_args.output_dir, "UICHEOL-HWANG/KoAlpaca-InterView-5.8B")
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             trainer.save_model(save_path)
             print(f"{save_path} 경로로 저장 완료")
