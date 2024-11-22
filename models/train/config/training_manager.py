@@ -30,7 +30,7 @@ class TrainingManager:
             gradient_accumulation_steps=32,
             optim="paged_adamw_32bit",
             save_steps=50,
-            logging_steps=1,
+            logging_steps=10,
             learning_rate=learning_rate,
             weight_decay=0.02,
             fp16=True,
